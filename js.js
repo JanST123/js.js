@@ -35,17 +35,17 @@ js.hasClass = function(el, cls) {
  * @param String cls
  */
 js.addClass = function(el, cls) {
-    var classes=[];
-    if (el.hasAttribute('class')) {
-        classes=el.getAttribute('class').trim().split(' ');
-    }
-    if (classes.indexOf(cls)<0) {
-        classes.push(cls);
-    }
-    classes = classes.join(' ');
-    el.setAttribute('class', classes);
-  
-    return true;
+  var classes=[];
+  if (el.hasAttribute('class')) {
+    classes=el.getAttribute('class').trim().split(' ');
+  }
+  if (classes.indexOf(cls)<0) {
+    classes.push(cls);
+  }
+  classes = classes.join(' ');
+  el.setAttribute('class', classes);
+
+  return true;
 };
 
 
@@ -55,17 +55,17 @@ js.addClass = function(el, cls) {
  * @param String cls
  */
 js.removeClass = function(el, cls) {
-    var classes=[];
-    if (el.hasAttribute('class')) {
-        classes=el.getAttribute('class').trim().split(' ');
-    }
-    if (classes.indexOf(cls)>=0) {
-        delete(classes[classes.indexOf(cls)]);
-    }
-    classes = classes.join(' ');
-    el.setAttribute('class', classes);
+  var classes=[];
+  if (el.hasAttribute('class')) {
+    classes=el.getAttribute('class').trim().split(' ');
+  }
+  if (classes.indexOf(cls)>=0) {
+    delete(classes[classes.indexOf(cls)]);
+  }
+  classes = classes.join(' ');
+  el.setAttribute('class', classes);
 
-    return true;
+  return true;
 };
 
 
@@ -76,16 +76,16 @@ js.removeClass = function(el, cls) {
  * @returns {*|null}
  */
 js.getCookie = function(name, defaultValue) {
-    defaultValue = defaultValue || null;
+  defaultValue = defaultValue || null;
 
-    var r = new RegExp(name + '=([^;]+)');
+  var r = new RegExp(name + '=([^;]+)');
 
 
-    if (typeof(document.cookie) == 'string' && document.cookie.match(r)) {
-        return JSON.parse(RegExp.$1);
-    }
+  if (typeof(document.cookie) == 'string' && document.cookie.match(r)) {
+    return JSON.parse(RegExp.$1);
+  }
 
-    return defaultValue;
+  return defaultValue;
 }
 
 
@@ -96,19 +96,19 @@ js.getCookie = function(name, defaultValue) {
  * @param Int expire
  */
 js.setCookie = function(name, value, expire) {
-    expire = expire || null;
+  expire = expire || null;
 
-    var str = name + '=' + JSON.stringify(value).replace(/;/g, '#SEMIKOLON#') +';';
+  var str = name + '=' + JSON.stringify(value).replace(/;/g, '#SEMIKOLON#') +';';
 
-    if (expire) {
-        if (expire instanceof Date) {
-            str += 'expires=' + expire.toGMTString();
-        } else {
-            str += 'expires=' + expire;
-        }
+  if (expire) {
+    if (expire instanceof Date) {
+      str += 'expires=' + expire.toGMTString();
+    } else {
+      str += 'expires=' + expire;
     }
+  }
 
-    document.cookie = str;
+  document.cookie = str;
 }
 
 /**
@@ -368,9 +368,9 @@ js.ajaxParam = function(obj, str, dimensions) {
  **/
 js.ajax = function(url, settings) {
   var xhr=new XMLHttpRequest(),
-      headers=[
-        [ 'X-Requested-With', 'xmlhttprequest' ] // we always append this header
-      ];
+    headers=[
+      [ 'X-Requested-With', 'xmlhttprequest' ] // we always append this header
+    ];
 
 
 
@@ -576,4 +576,18 @@ js.post=function(url, params, successCallback, errorCallback, dataType) {
     success: successCallback,
     method: 'POST',
   })
+}
+
+
+/**
+ * Get style computed style property of an Element
+ * @param HTMLNode el
+ * @param StringstyleProp
+ * @returns {Mixed}
+ */
+js.getStyleProperty = function(el,styleProp) {
+  if (typeof(window.getComputedStyle) == 'function') var y = window.getComputedStyle(el).getPropertyValue(styleProp);
+  else if (el.currentStyle) var y = el.currentStyle[styleProp];
+
+  return y;
 }
