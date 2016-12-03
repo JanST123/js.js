@@ -44,6 +44,8 @@ js.addClass = function(el, cls) {
     }
     classes = classes.join(' ');
     el.setAttribute('class', classes);
+  
+    return true;
 };
 
 
@@ -63,6 +65,7 @@ js.removeClass = function(el, cls) {
     classes = classes.join(' ');
     el.setAttribute('class', classes);
 
+    return true;
 };
 
 
