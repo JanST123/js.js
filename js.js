@@ -26,7 +26,7 @@ js.hasClass = function(el, cls) {
     classes=el.getAttribute('class').trim().split(' ');
   }
   return classes.indexOf(cls)>=0;
-}
+};
 
 
 /**
@@ -86,7 +86,7 @@ js.getCookie = function(name, defaultValue) {
   }
 
   return defaultValue;
-}
+};
 
 
 /**
@@ -109,7 +109,7 @@ js.setCookie = function(name, value, expire) {
   }
 
   document.cookie = str;
-}
+};
 
 /**
  * adds a new element to the DOM
@@ -138,7 +138,7 @@ js.addEl = function(target, tagname, classes, position) {
   }
 
   return element;
-}
+};
 
 
 /**
@@ -153,7 +153,7 @@ js.removeEl = function(element) {
   }
 
   return false;
-}
+};
 
 
 /**
@@ -170,7 +170,7 @@ js.selectAllText = function(el) {
     el.setSelectionRange(0, 9999);
     window.selectAllTextTimeout=null;
   }, 100);
-}
+};
 
 
 /**
@@ -198,7 +198,7 @@ js.updateMetaTag = function(name, value) {
     }
   }
   return false;
-}
+};
 
 
 /**
@@ -226,7 +226,7 @@ js.updateLinkTag = function(rel, href) {
     }
   }
   return false;
-}
+};
 
 
 /**
@@ -244,8 +244,8 @@ js.animateScroll = function(offset, duration) {
 
   // add the transition if not done
   if (!js.hasClass(document.body, 'js-animate-scroll')) {
-    js.addClass(document.body, 'js-animate-scroll')
-    if (typeof(document.body.style.transition) === 'string' && document.body.style.transition != '') document.body.style.transition += ',';
+    js.addClass(document.body, 'js-animate-scroll');
+    if (typeof(document.body.style.transition) === 'string' && document.body.style.transition !== '') document.body.style.transition += ',';
     else document.body.style.transition = '';
     document.body.style.transition += "transform " + parseFloat(duration) + 's';
   }
@@ -284,7 +284,7 @@ js.animateScroll = function(offset, duration) {
   document.body.style.overflow='hidden';
   document.body.style.transform="translateY(" + parseInt(offset * -1) + "px)";
 
-}
+};
 
 
 /**
@@ -298,12 +298,14 @@ js.dereference = function(src) {
     if (src.hasOwnProperty(x)) ret[x] = src[x];
   }
   return ret;
-}
+};
 
 
 /**
  * creates a serialized string of an array/object for use in url
  * @param Object obj
+ * @param String str (is used for recursive calling itself from this function)
+ * @param Array dimensions (is used for recursive calling itself from this function)
  * @return String
  **/
 js.ajaxParam = function(obj, str, dimensions) {
@@ -311,27 +313,29 @@ js.ajaxParam = function(obj, str, dimensions) {
   dimensions = dimensions || [];
 
   for (var x in obj) {
-    if (x=='length') continue;
+    if (obj.hasOwnProperty(x)) {
+      if (x=='length') continue;
 
-    if (typeof(obj[x])=='object' && obj[x]!=null) {
-      // object handling
-      dimensions.push(x);
-      str=js.ajaxParam(js.dereference(obj[x]), str, dimensions);
-      dimensions.pop();
-    } else {
-      if (str!='') str+='&';
-      var dimensionStr='';
-      for (var i=0; i<dimensions.length; ++i) {
-        if (dimensionStr=='') dimensionStr+=dimensions[i]
-        else dimensionStr+='[' + dimensions[i] + ']';
-      }
-      if (dimensionStr!='') dimensionStr+='[' + x + ']';
-      else dimensionStr+=x;
-
-      if (obj[x] === null) {
-        str+=dimensionStr + '=';
+      if (typeof(obj[x])=='object' && obj[x]!==null) {
+        // object handling
+        dimensions.push(x);
+        str=js.ajaxParam(js.dereference(obj[x]), str, dimensions);
+        dimensions.pop();
       } else {
-        str+=dimensionStr + '=' + encodeURIComponent(obj[x]);
+        if (str!=='') str+='&';
+        var dimensionStr='';
+        for (var i=0; i<dimensions.length; ++i) {
+          if (dimensionStr==='') dimensionStr+=dimensions[i];
+          else dimensionStr+='[' + dimensions[i] + ']';
+        }
+        if (dimensionStr!=='') dimensionStr+='[' + x + ']';
+        else dimensionStr+=x;
+
+        if (obj[x] === null) {
+          str+=dimensionStr + '=';
+        } else {
+          str+=dimensionStr + '=' + encodeURIComponent(obj[x]);
+        }
       }
     }
   }
@@ -357,6 +361,7 @@ js.ajaxParam = function(obj, str, dimensions) {
  *    headers         (default: {})                  Type: Object - An object of additional header key/value pairs to send along with requests using the XMLHttpRequest transport. The header X-Requested-With: XMLHttpRequest is always added, but its default XMLHttpRequest value can be changed here. Values in the headers setting can also be overwritten from within the beforeSend function.
  *    method          (default: 'GET')               Type: String - The HTTP method to use for the request (e.g. "POST", "GET", "PUT").
  *    password                                       Type: String -  A password to be used with XMLHttpRequest in response to an HTTP access authentication request.
+ *    progressCallback                               Type: Function - A function called on each progress update. Accepts 1 Parameter: event (contains progress info)
  *    statusCode      (default: {})                  Type: Object - An object of numeric HTTP codes and functions to be called when the response has the corresponding code.
  *    success                                        Type: Function( Anything data, String textStatus, XHR xhr ) - A function to be called if the request succeeds. The function gets passed three arguments: The data returned from the server, formatted according to the dataType parameter or the dataFilter callback function, if specified; a string describing the status; and the jqXHR (in jQuery 1.4.x, XMLHttpRequest) object.
  *    timeout                                        Type: Number - Set a timeout (in milliseconds) for the request. This will override any global timeout set with $.ajaxSetup(). The timeout period starts at the point the $.ajax call is made; if several other requests are in progress and the browser has no connections available, it is possible for a request to time out before it can be sent. In jQuery 1.4.x and below, the XMLHttpRequest object will be in an invalid state if the request times out; accessing any object members may throw an exception. In Firefox 3.0+ only, script and JSONP requests cannot be cancelled by a timeout; the script will run even if it arrives after the timeout period.
@@ -401,28 +406,32 @@ js.ajax = function(url, settings) {
   }
 
   // other headers
-  if (typeof(settings.headers)=='object' && settings.headers!=null) {
+  if (typeof(settings.headers)==='object' && settings.headers!==null) {
     for (var x in settings.headers) {
-      if (x=='length') continue;
-
-      if (typeof(settings.headers[x])=='object' && typeof(settings.headers[x].length)!='undefined') {
-        headers.push(settings.headers[x]);
-      } else {
-        var tmp=settings.headers[x].split(':');
-        if (tmp.length==2) {
-          tmp[1]=tmp[1].trim();
-          headers.push(tmp);
+      if (settings.headers.hasOwnProperty(x)) {
+        if (x=='length') continue;
+  
+        if (typeof(settings.headers[x])=='object' && typeof(settings.headers[x].length)!='undefined') {
+          headers.push(settings.headers[x]);
+        } else {
+          var tmp=settings.headers[x].split(':');
+          if (tmp.length==2) {
+            tmp[1]=tmp[1].trim();
+            headers.push(tmp);
+          }
         }
       }
     }
   }
 
   // xhr fields
-  if (typeof(settings.xhrFields)=='object' && settings.xhrFields!=null) {
+  if (typeof(settings.xhrFields)=='object' && settings.xhrFields!==null) {
     for (var x in settings.xhrFields) {
-      if (x=='length') continue;
+      if (settings.xhrFields.hasOwnProperty(x)) {
+        if (x=='length') continue;
 
-      xhr[x]=settings.xhrFields[x];
+        xhr[x]=settings.xhrFields[x];
+      }
     }
   }
 
@@ -430,7 +439,7 @@ js.ajax = function(url, settings) {
 
 
   var params=null;
-  if (typeof(settings.data)=='object' && settings.data!=null) {
+  if (typeof(settings.data)=='object' && settings.data!==null) {
     params=js.ajaxParam(settings.data);
   } else if (typeof(settings.data)=='string') {
     params=settings.data;
@@ -442,6 +451,8 @@ js.ajax = function(url, settings) {
       url+='?' + params;
     }
   }
+
+
 
   // open request
   xhr.open(settings.method, url, true, settings.user, settings.password);
@@ -481,7 +492,13 @@ js.ajax = function(url, settings) {
         // parse data dependent on datatype
         var data=this.response;
         if (typeof(settings.dataType)=='string' && settings.dataType=='json') {
-          data=JSON.parse(this.response);
+          try {
+            data=JSON.parse(this.response);
+          } catch(e) {
+            if (typeof(settings.error) == 'function') {
+              settings.error.call(settings.context, this, this.response);
+            }
+          }
         }
 
         // apply datafilter
@@ -495,7 +512,7 @@ js.ajax = function(url, settings) {
       }
 
       // call statuscode callback
-      if (typeof(settings.statusCode)=='object' && settings.statusCode!=null && typeof(settings.statusCode[this.status])=='function') {
+      if (typeof(settings.statusCode)=='object' && settings.statusCode!==null && typeof(settings.statusCode[this.status])=='function') {
         settings.statusCode[this.status].call(settings.context, this, this.response);
       }
 
@@ -508,6 +525,11 @@ js.ajax = function(url, settings) {
       settings.error.call(settings.context, xhr, 'error');
     }
   });
+  
+  // listen for progress change
+  if (typeof(settings.progressCallback) == 'function') {
+    xhr.addEventListener('progress', settings.progressCallback);
+  }
 
   // perform request
   if (settings.method=='POST') {
@@ -518,7 +540,7 @@ js.ajax = function(url, settings) {
 
   return xhr;
 
-}
+};
 
 
 /**
@@ -575,8 +597,8 @@ js.post=function(url, params, successCallback, errorCallback, dataType) {
     error: errorCallback,
     success: successCallback,
     method: 'POST',
-  })
-}
+  });
+};
 
 
 /**
@@ -586,8 +608,192 @@ js.post=function(url, params, successCallback, errorCallback, dataType) {
  * @returns {Mixed}
  */
 js.getStyleProperty = function(el,styleProp) {
-  if (typeof(window.getComputedStyle) == 'function') var y = window.getComputedStyle(el).getPropertyValue(styleProp);
-  else if (el.currentStyle) var y = el.currentStyle[styleProp];
+  var y = null;
+  if (typeof(window.getComputedStyle) == 'function') y = window.getComputedStyle(el).getPropertyValue(styleProp);
+  else if (el.currentStyle) y = el.currentStyle[styleProp];
 
   return y;
-}
+};
+
+
+/**
+ * escape special regex characters
+ * @param String text
+ * @return String quotedText
+ **/
+js.pregQuote = function(text) {
+  if (typeof(text) === 'string') {
+    return text.replace(/([\.\\\+\*\?\[\^\]\$\(\)\{\}\=\!\|\:\-])/g, '\\$1');
+  }
+  return text;
+};
+
+
+/**
+ * Encode a set of form elements as string for ajax request
+ * @param HTMLNode form element
+ * @return String
+ **/
+js.serializeFormValues=function(formEl) {
+  var formData={};
+  var fields=formEl.querySelectorAll('input,select,textarea');
+
+  function setFieldValue(field, value) {
+    if (typeof(field.name)=='string' && field.name.match(/(.*)\[(.*)\]$/)) {
+      if (RegExp.$2==='') {
+        if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1]=[];
+        formData[RegExp.$1].push(value);
+      } else {
+        if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1]={};
+        formData[RegExp.$1][RegExp.$2]=calue;
+      }
+    } else {
+      formData[field.name]=value;
+    }
+  }
+
+  for (var x=0; x<fields.length; ++x) {
+    if (typeof(fields[x].type)!='undefined' && (fields[x].type=='checkbox' || fields[x].type=='radio')) {
+      if (fields[x].checked) {
+        setFieldValue(fields[x], fields[x].value);
+      }
+    } else if(fields[x].tagName=='SELECT') {
+      setFieldValue(fields[x], fields[x].options[fields[x].selectedIndex].value);
+    } else {
+      setFieldValue(fields[x], fields[x].value);
+    }
+  }
+  
+  return js.ajaxParam(formData);
+};
+
+
+/**
+ * trigger an event on an element
+ * @param HTMLNode el
+ * @param String eventName
+ * @param Object customData
+ * @return Void
+ */
+js.triggerEvent = function(el, eventName, customData) {
+  customData = customData || {};
+  var event = new Event(eventName, customData);
+
+  // Dispatch the event.
+  el.dispatchEvent(event);
+};
+
+
+/**
+ * handles events and ensures the events can be removed later by identifieng them by name and element
+ * @param HTMLNode el (the element to add or remove an event to/from)
+ * @return Functions add, remove
+ */
+js.eventListener = function(el) {
+  var longTouchTimer=null,
+      longTouchX=null,
+      longTouchY=null,
+      longTouchTriggered=false;
+  function startLongTouch(callback) {
+    return function(e) {
+      // prevent select on longtouch on android
+      this.onselectstart = function() {
+        return false;
+      };
+      longTouchTriggered=false;
+      if (typeof(e.touches[0]) === 'object' && typeof(e.touches[0].clientX) === 'number') {
+        longTouchX = e.touches[0].clientX;
+        longTouchY = e.touches[0].clientY;
+      }
+
+      var el=this;
+      longTouchTimer = window.setTimeout(function() {
+        longTouchTriggered=true;
+        if (typeof(window.navigator.vibrate) == 'function') window.navigator.vibrate(50);
+        callback.call(el, e);
+      }, 500);
+    };
+  }
+  function endLongTouch(e) {
+    if (longTouchTriggered) {
+      e.preventDefault();
+      longTouchTriggered=false;
+    }
+    if (longTouchTimer) {
+      window.clearTimeout(longTouchTimer);
+      longTouchTimer=null;
+    }
+  }
+  function endLongTouchOnMove(e) {
+    if (longTouchTimer && typeof(e.touches[0]) === 'object' && typeof(e.touches[0].clientX) === 'number') {
+      if (longTouchX !== null && longTouchY !== null) {
+        if (Math.abs(longTouchX - e.touches[0].clientX) > 20 || Math.abs(longTouchY - e.touches[0].clientY)) {
+          window.clearTimeout(longTouchTimer);
+          longTouchTimer=null;
+
+        }
+      }
+    }
+  }
+
+  return {
+    'add': function(eventName, type, callback, capture) {
+      capture = capture || false;
+      
+      if (typeof(type) == 'string') type = [ type ];
+      for (var i=0; i<type.length; ++i) {
+
+        switch(type[i]) {
+          case 'longtouch':
+            var startCb=startLongTouch(callback);
+            el.addEventListener('touchstart', startCb, capture);
+            js.boundEvents.push([el, eventName + '-longtouchstart', 'touchstart', startCb, capture]);
+
+            el.addEventListener('touchend', endLongTouch, capture);
+            js.boundEvents.push([el, eventName + '-longtouchend', 'touchend', endLongTouch, capture]);
+
+            el.addEventListener('touchmove', endLongTouchOnMove, capture);
+            js.boundEvents.push([el, eventName + '-longtouchmove', 'touchmove', endLongTouchOnMove, capture]);
+            break;
+
+          default:
+            // normal js event
+            el.addEventListener(type[i], callback, capture);
+            js.boundEvents.push([el, eventName, type[i], callback, capture]);
+        }
+      }
+    },
+    'remove': function(eventName, type, callback, capture) {
+      capture = capture || false;
+
+      var found=false,
+          tmp=[];
+      for (var i=0; i<js.boundEvents.length; ++i) {
+        if (js.boundEvents[i][0] === el && js.boundEvents[i][1] == eventName) {
+          el.removeEventListener(js.boundEvents[i][2], js.boundEvents[i][3], js.boundEvents[i][4]);
+          delete js.boundEvents[i];
+          found=true;
+        } else {
+          tmp.push(js.boundEvents[i]);
+        }
+      }
+      js.boundEvents = tmp;
+
+      if (!found) {
+        el.removeEventListener(type, callback, capture);
+      }
+    },
+    'trigger': function(eventName, eventData) {
+      eventData = eventData || {};
+
+      for (var i=0; i<js.boundEvents.length; ++i) {
+        if (js.boundEvents[i][0] === el && js.boundEvents[i][1] == eventName) {
+          eventData.type = js.boundEvents[i][2];
+          js.boundEvents[i][3].call(el, eventData);
+        }
+      }
+    }
+  };
+};
+js.boundEvents=[];
+
