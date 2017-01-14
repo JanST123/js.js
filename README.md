@@ -17,6 +17,7 @@ See it in action on
   * POST
   * JSON
   * jQuery Like Interface
+  * Form serialization
 * DOM Manipulation
   * Append Element
   * Prepend Element
@@ -28,10 +29,16 @@ See it in action on
   * removeClass
 * Animations
   * Animated Scrolling (CSS3)
+* Event-Handling
+  * Trigger Browser-Events on Elements
+  * Add and safely-remove event-handlers to/from elements
+  * Trigger Event Handlers
+  * Handle Long-Touch Event
 * Cookies
   * Set Cookie
   * Get Cookie
 * Other Helpers
+  * Quote RegExp special chars
   * Update Meta Tags
   * Update Link Tags
   * Select All Text in Input
