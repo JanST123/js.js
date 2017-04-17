@@ -62,10 +62,91 @@ js.removeClass = function(el, cls) {
   if (classes.indexOf(cls)>=0) {
     delete(classes[classes.indexOf(cls)]);
   }
-  classes = classes.join(' ');
+  classes = classes.join(' ').trim();
   el.setAttribute('class', classes);
 
   return true;
+};
+
+
+var storageBackend='cookie';
+js.storage = {
+  "getBackend": function() {
+    return storageBackend;
+  },
+
+  "setBackend": function(backend) {
+    if (['cookie', 'localstorage'].indexOf(backend) < 0) throw 'js.storage Backend must be cookie or localstorage';
+
+    storageBackend = backend;
+
+    if (backend == 'localstorage' && !("localStorage" in window)) {
+      // fallback to cookie
+      storageBackend = 'cookie';
+    }
+
+  },
+
+  "get": function(key, defaultValue) {
+    defaultValue = typeof(defaultValue) === 'undefined' ? null : defaultValue;
+
+    if (storageBackend == 'cookie') {
+      var r = new RegExp(key + '=([^;]+)');
+      if (typeof(document.cookie) == 'string' && document.cookie.match(r)) {
+        return JSON.parse(RegExp.$1);
+      }
+
+    } else if (storageBackend == 'localstorage') {
+      if (js.storage.has(key)) {
+        return JSON.parse(localStorage.getItem(key));
+      }
+    }
+
+    return defaultValue;
+  },
+
+  "set": function(key, value, expire) {
+    expire = expire || null;
+    if (storageBackend == 'cookie') {
+      var str = key + '=' + JSON.stringify(value).replace(/;/g, '#SEMIKOLON#') +';';
+
+      if (expire) {
+        if (expire instanceof Date) {
+          str += 'expires=' + expire.toGMTString();
+        } else {
+          str += 'expires=' + expire;
+        }
+      }
+
+      document.cookie = str;
+
+    } else if (storageBackend == 'localstorage') {
+      //@TODO: save expire
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+  },
+
+  "has": function(key) {
+    if (storageBackend == 'cookie') {
+      var r = new RegExp(name + '=([^;]+)');
+      if (typeof(document.cookie) == 'string' && document.cookie.match(r)) {
+        return true;
+      }
+
+    } else if (storageBackend == 'localstorage') {
+      return null !== localStorage.getItem(key);
+    }
+    return false;
+  },
+
+  "delete": function (key) {
+    if (storageBackend == 'cookie') {
+      document.cookie = key + '=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
+    } else if (storageBackend == 'localstorage') {
+      localStorage.removeItem(key);
+    }
+  }
 };
 
 
@@ -74,18 +155,14 @@ js.removeClass = function(el, cls) {
  * @param String name
  * @param String defaultValue
  * @returns {*|null}
+ * @deprecated use js.storage
  */
 js.getCookie = function(name, defaultValue) {
-  defaultValue = defaultValue || null;
-
-  var r = new RegExp(name + '=([^;]+)');
-
-
-  if (typeof(document.cookie) == 'string' && document.cookie.match(r)) {
-    return JSON.parse(RegExp.$1);
-  }
-
-  return defaultValue;
+  var s = js.storage.getBackend();
+  js.storage.setBackend('cookie');
+  var ret = js.storage.get(name, defaultValue);
+  js.storage.setBackend(s);
+  return ret;
 };
 
 
@@ -93,22 +170,14 @@ js.getCookie = function(name, defaultValue) {
  * Set a cookie value
  * @param String name
  * @param String value
- * @param Int expire
+ * @param Date expire
+ * @deprecated use js.storage
  */
 js.setCookie = function(name, value, expire) {
-  expire = expire || null;
-
-  var str = name + '=' + JSON.stringify(value).replace(/;/g, '#SEMIKOLON#') +';';
-
-  if (expire) {
-    if (expire instanceof Date) {
-      str += 'expires=' + expire.toGMTString();
-    } else {
-      str += 'expires=' + expire;
-    }
-  }
-
-  document.cookie = str;
+  var s = js.storage.getBackend();
+  js.storage.setBackend('cookie');
+  js.storage.set(name, value, expire);
+  js.storage.setBackend(s);
 };
 
 /**
@@ -135,6 +204,74 @@ js.addEl = function(target, tagname, classes, position) {
 
   if (classes !== null) {
     js.addClass(element, classes);
+  }
+
+  return element;
+};
+
+/**
+ * find parent element
+ *
+ * @param HTMLnode element
+ * @param string parentElementSelector
+ * @return HTMLnode or false if not found
+ **/
+js.parentUntil = function(element,parentElementSelector){
+  if (element instanceof HTMLElement) {
+    var x=element;
+    while (x = x.parentNode) {
+      if (typeof(x.matches) === 'function' && x.matches(parentElementSelector)) {
+        return x;
+      } else if (typeof(x.msMatchesSelector) === 'function' && x.msMatchesSelector(parentElementSelector)) {
+        return x;
+      }
+    }
+  }
+
+  return false;
+};
+
+
+/**
+ * checks if childElement is descendend of parentElement
+ * @param HTMLElement childElement
+ * @param HTMLElement parentElement
+ * @return Boolean isDescendent
+ */
+js.isDescendant = function(childElement, parentElement) {
+  if (childElement instanceof HTMLElement) {
+    var x=childElement;
+    while (x = x.parentNode) {
+      if (x === parentElement) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+
+/**
+ * adds ready html to the DOM
+ * @param HTMLNode target
+ * @param String html
+ * @param String position (append, prepend, after, before)
+ * @return HTMLNode (the new element)
+ **/
+js.addHtml = function(target, html, position) {
+  position = position || 'append';
+  if (['append', 'prepend', 'after', 'before'].indexOf(position) < 0) throw 'js.addEl: invalid position!';
+
+  var template = document.createElement('div');
+  template.innerHTML = html.trim();
+  var element = template.firstChild;
+
+  switch(position){
+    case 'before':  target.parentNode.insertBefore(element, target); break;
+    case 'after':   target.parentNode.insertBefore(element, target.nextSibling); break;
+    case 'prepend': target.insertBefore( element, target.firstChild ); break;
+    case 'append':  target.appendChild( element ); break;
   }
 
   return element;
@@ -202,6 +339,47 @@ js.updateMetaTag = function(name, value) {
 
 
 /**
+ * update the <title> tag
+ * @param String value
+ * @returns {boolean} success
+ **/
+js.updateTitle = function(value) {
+  if (typeof(document.head) != 'undefined' && typeof(document.head.querySelector) == 'function') {
+    var el = document.head.getElementsByTagName('title');
+    if (el.length) el = el[0]; else el = null;
+
+    if (!el && value !== null) {
+      el = js.addEl(document.head, 'title'); // add the element
+    }
+
+    if (el) {
+      if (value === null) js.removeEl(el);
+      else el.textContent = value;
+
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * get content of the title tag
+ * @returns {String}
+ **/
+js.getTitle = function() {
+  if (typeof(document.head) != 'undefined' && typeof(document.head.querySelector) == 'function') {
+    var el = document.head.getElementsByTagName('title');
+    if (el.length) el = el[0]; else el = null;
+
+    if (el) {
+      return el.textContent;
+    }
+  }
+  return '';
+};
+
+
+/**
  * update content of a link tag or adds the link tag if not exists
  * @param String name
  * @param String value (set to null to remove)
@@ -230,59 +408,52 @@ js.updateLinkTag = function(rel, href) {
 
 
 /**
- * does animated scroll. Animation is pure CSS3
+ * does animated vertical scroll to given offset.
  * @param number offset
- * @param float duration
+ * @param number duration in ms
  * @return Void
  */
 js.animateScroll = function(offset, duration) {
-  duration = duration || 0.4;
+  duration = duration || 400;
+  if (offset == window.scrollY) return; // nothing to do
 
-  var maxScroll = document.body.scrollHeight - document.body.clientHeight;
-  if (offset > maxScroll) offset=maxScroll;
+  offset = Math.floor(offset);
+  var currAnimationId = 0,
+      currentScrollpos = window.scrollY,
+      oldScrollpos = -1,
+      lastFrameTime = +new Date() - 1;
+  var direction = offset > currentScrollpos ? 1 : -1;
+  var timeManipulation = direction == 1 ? (offset - currentScrollpos) : (currentScrollpos - offset) ;
 
 
-  // add the transition if not done
-  if (!js.hasClass(document.body, 'js-animate-scroll')) {
-    js.addClass(document.body, 'js-animate-scroll');
-    if (typeof(document.body.style.transition) === 'string' && document.body.style.transition !== '') document.body.style.transition += ',';
-    else document.body.style.transition = '';
-    document.body.style.transition += "transform " + parseFloat(duration) + 's';
-  }
+  var animation = function(){
+    if(window.scrollY != oldScrollpos){
+      // we still have to scroll
+      oldScrollpos = window.scrollY;
 
-  var onEnd = function() {
-    // event should be executed only once
-    document.body.removeEventListener("webkitTransitionEnd", onEnd, false);
-    document.body.removeEventListener("oTransitionEnd", onEnd, false);
-    document.body.removeEventListener("transitionend", onEnd, false);
+      var newScrollpos = +window.scrollY + (((new Date() - lastFrameTime) / duration * timeManipulation ) * direction);
+      newScrollpos = (direction == 1 ? Math.ceil(newScrollpos) : Math.floor(newScrollpos));
 
-    // reset the overflow hidden, to make window scrollable
-    document.body.style.overflow='';
+      if( (newScrollpos >= offset && direction == 1) || (newScrollpos <= offset && direction == -1) ) {
+        // we scrolled too far... fix the scrollpos and cancel animation
+        newScrollpos = offset;
+        cancelAnimationFrame( currAnimationId );
 
-    // temporary remove transition
-    var tmp = document.body.style.transition;
-    document.body.style.transition='';
+      } else {
+        // request next animation frame
+        lastFrameTime = +new Date();
+        currAnimationId = requestAnimationFrame( animation );
+      }
 
-    // remove the transform, add real scrolling
-    document.body.style.transform = '';
+      // do the scrolling
+      window.scrollTo(0, newScrollpos);
 
-    // do real scrolling
-    window.scrollTo(0, offset);
-
-    // re-enable the transition
-    document.body.style.transition=tmp;
+    } else {
+      cancelAnimationFrame( currAnimationId );
+    }
   };
 
-  // bind listener on animation end
-  document.body.addEventListener("webkitTransitionEnd", onEnd, false);
-  document.body.addEventListener("oTransitionEnd", onEnd, false);
-  document.body.addEventListener("transitionend", onEnd, false);
-
-
-
-  // do the animation (previously hide the scrollbar as it will look odd)
-  document.body.style.overflow='hidden';
-  document.body.style.transform="translateY(" + parseInt(offset * -1) + "px)";
+  currAnimationId = requestAnimationFrame( animation );
 
 };
 
@@ -344,6 +515,51 @@ js.ajaxParam = function(obj, str, dimensions) {
 };
 
 
+/**
+ * returns if device is touch device
+ * @returns {boolean} isTouch
+ */
+js.isTouchDevice = function() {
+  if (('ontouchstart' in window) ||
+    (navigator.maxTouchPoints > 0) ||
+    (navigator.msMaxTouchPoints > 0)) {
+    return true;
+  }
+  return false;
+};
+
+
+/**
+ * merges two objects together in one, object keys in obj2 will override this of obj1
+ * @param Object obj1
+ * @param Object obj2
+ */
+js.objectMerge = function(obj1, obj2) {
+  var newObj=js.dereference(obj1);
+
+  for (var x in obj2) {
+    if (obj2.hasOwnProperty(x)) {
+      if (newObj.hasOwnProperty(x) && typeof(newObj[x]) === 'object' && newObj[x] !== null  && typeof(obj2[x]) === 'object' && obj2[x] !== null) {
+        newObj[x] = js.objectMerge(obj1[x], obj2[x]);
+      } else {
+        newObj[x] = obj2[x];
+      }
+    }
+  }
+
+  return newObj;
+};
+
+
+var ajaxDefaultSettings={};
+/**
+ * add some default settings for each ajax request
+ * @param settings
+ */
+js.ajaxSetup = function(settings) {
+  ajaxDefaultSettings = settings;
+};
+
 
 /**
  * perform ajax requests (jquery like interface)
@@ -381,6 +597,8 @@ js.ajax = function(url, settings) {
 
   // default settings
   settings = settings || {};
+  settings = js.objectMerge(ajaxDefaultSettings, settings);
+
   settings.method=settings.method || 'GET';
   settings.user=settings.user || null;
   settings.password=settings.password || null;
@@ -448,7 +666,11 @@ js.ajax = function(url, settings) {
   if (settings.method=='GET') {
     // extend url with params for GET request
     if (params) {
-      url+='?' + params;
+      var urlParts = url.split('?');
+      if (urlParts.length > 1) urlParts[1] += '&';
+      else urlParts[1]='';
+      urlParts[1]  += params;
+      url = urlParts[0] + '?' + urlParts[1];
     }
   }
 
@@ -601,6 +823,8 @@ js.post=function(url, params, successCallback, errorCallback, dataType) {
 };
 
 
+
+
 /**
  * Get style computed style property of an Element
  * @param HTMLNode el
@@ -634,7 +858,8 @@ js.pregQuote = function(text) {
  * @param HTMLNode form element
  * @return String
  **/
-js.serializeFormValues=function(formEl) {
+js.serializeFormValues=function(formEl, asObject) {
+  asObject = asObject || false;
   var formData={};
   var fields=formEl.querySelectorAll('input,select,textarea');
 
@@ -664,6 +889,8 @@ js.serializeFormValues=function(formEl) {
     }
   }
   
+  if (asObject) return formData;
+  
   return js.ajaxParam(formData);
 };
 
@@ -676,8 +903,17 @@ js.serializeFormValues=function(formEl) {
  * @return Void
  */
 js.triggerEvent = function(el, eventName, customData) {
-  customData = customData || {};
-  var event = new Event(eventName, customData);
+  customData = customData || null;
+
+  var event=null;
+  if (customData) {
+    event = document.createEvent('CustomEvent');
+    event.initCustomEvent(eventName, true, true, customData);
+    
+  } else {
+    event = document.createEvent('Event');
+    event.initEvent(eventName, true, true);
+  }
 
   // Dispatch the event.
   el.dispatchEvent(event);
@@ -690,6 +926,8 @@ js.triggerEvent = function(el, eventName, customData) {
  * @return Functions add, remove
  */
 js.eventListener = function(el) {
+  el = el || null;
+
   var longTouchTimer=null,
       longTouchX=null,
       longTouchY=null,
@@ -700,6 +938,18 @@ js.eventListener = function(el) {
       this.onselectstart = function() {
         return false;
       };
+
+      // prevent text selecting on iOS devices.
+      // implement a css class for the body, containing this rules:
+      // -moz-user-select: none;
+      // -webkit-user-select: none;
+      // -ms-user-select: none;
+      // user-select: none;
+      // -o-user-select: none;
+      // -webkit-touch-callout: none;
+      js.addClass(document.body, 'prevent-selection-for-longtouch');
+
+
       longTouchTriggered=false;
       if (typeof(e.touches[0]) === 'object' && typeof(e.touches[0].clientX) === 'number') {
         longTouchX = e.touches[0].clientX;
@@ -709,12 +959,14 @@ js.eventListener = function(el) {
       var el=this;
       longTouchTimer = window.setTimeout(function() {
         longTouchTriggered=true;
-        if (typeof(window.navigator.vibrate) == 'function') window.navigator.vibrate(50);
+        if (typeof(navigator.vibrate) == 'function') navigator.vibrate(50);
         callback.call(el, e);
       }, 500);
     };
   }
   function endLongTouch(e) {
+    js.removeClass(document.body, 'prevent-selection-for-longtouch');
+
     if (longTouchTriggered) {
       e.preventDefault();
       longTouchTriggered=false;
@@ -739,7 +991,7 @@ js.eventListener = function(el) {
   return {
     'add': function(eventName, type, callback, capture) {
       capture = capture || false;
-      
+
       if (typeof(type) == 'string') type = [ type ];
       for (var i=0; i<type.length; ++i) {
 
@@ -766,6 +1018,8 @@ js.eventListener = function(el) {
     'remove': function(eventName, type, callback, capture) {
       capture = capture || false;
 
+      if (typeof(type) == 'string') type = [ type ];
+
       var found=false,
           tmp=[];
       for (var i=0; i<js.boundEvents.length; ++i) {
@@ -780,20 +1034,83 @@ js.eventListener = function(el) {
       js.boundEvents = tmp;
 
       if (!found) {
-        el.removeEventListener(type, callback, capture);
+        for (var i=0; i<type.length; ++i) {
+          el.removeEventListener(type[i], callback, capture);
+        }
       }
     },
     'trigger': function(eventName, eventData) {
       eventData = eventData || {};
 
       for (var i=0; i<js.boundEvents.length; ++i) {
-        if (js.boundEvents[i][0] === el && js.boundEvents[i][1] == eventName) {
+        if ((el === null || js.boundEvents[i][0] === el) && js.boundEvents[i][1] == eventName) {
           eventData.type = js.boundEvents[i][2];
-          js.boundEvents[i][3].call(el, eventData);
+          js.boundEvents[i][3].call(js.boundEvents[i][0] , eventData);
         }
+      }
+    },
+    'pause': function(eventName) {
+      var boundEvents=js.dereference(js.boundEvents);
+
+      for (var i=0; i<js.boundEvents.length; ++i) {
+        if (boundEvents[i][0] === el && boundEvents[i][1] == eventName) {
+          // add to paused events
+          js.pausedEvents.push(boundEvents[i]);
+
+          // unbind event
+          js.eventListener(el).remove(boundEvents[i][1], boundEvents[i][2], boundEvents[i][3], boundEvents[i][4]);
+        }
+      }
+    },
+    'resume': function(eventName) {
+      var removeIndexes=[];
+      for (var i=0; i<js.pausedEvents.length; ++i) {
+        if (js.pausedEvents[i][0] === el && js.pausedEvents[i][1] == eventName) {
+          // rebind event
+          js.eventListener(el).add(js.pausedEvents[i][1], js.pausedEvents[i][2], js.pausedEvents[i][3], js.pausedEvents[i][4]);
+
+          // remove from paused events
+          removeIndexes.push(i);
+        }
+      }
+      for (var j=0; j<removeIndexes.length; ++j) {
+        js.pausedEvents.splice(removeIndexes[j], 1);
+      }
+    },
+    'pauseAll': function(excludePrefix) {
+      excludePrefix = excludePrefix || null;
+
+      var unbindEvents=[];
+
+      for (var i=0; i<js.boundEvents.length; ++i) {
+        if (js.boundEvents[i][1].indexOf(excludePrefix) === -1) {
+          // add to paused events
+          js.pausedEvents.push(js.boundEvents[i]);
+
+          unbindEvents.push(js.boundEvents[i]);
+        }
+      }
+
+      for (var j=0; j<unbindEvents.length; ++j) {
+        // unbind event
+        js.eventListener(unbindEvents[j][0]).remove(unbindEvents[j][1], unbindEvents[j][2], unbindEvents[j][3], unbindEvents[j][4]);
+      }
+    },
+    'resumeAll': function() {
+      var removeIndexes=[];
+      for (var i=0; i<js.pausedEvents.length; ++i) {
+        // rebind event
+        js.eventListener(js.pausedEvents[i][0]).add(js.pausedEvents[i][1], js.pausedEvents[i][2], js.pausedEvents[i][3], js.pausedEvents[i][4]);
+
+        // remove from paused events
+        removeIndexes.push(i);
+      }
+      for (var j=0; j<removeIndexes.length; ++j) {
+        js.pausedEvents.splice(removeIndexes[j], 1);
       }
     }
   };
 };
 js.boundEvents=[];
+js.pausedEvents=[];
 
