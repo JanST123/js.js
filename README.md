@@ -6,7 +6,7 @@ All functions are tested on modern Browsers (Edge, IE >= 10, Firefox, Chrome, Ch
 
 See it in action on
 * https://gebrauchtpreis.net
-* https://wir-schenken-uns-nix.de
+
 
 
 ## Some of the Features
