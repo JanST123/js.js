@@ -37,6 +37,9 @@ See it in action on
 * Cookies
   * Set Cookie
   * Get Cookie
+* LocalStorage
+  * Get Value
+  * Set Value
 * Other Helpers
   * Quote RegExp special chars
   * Update Meta Tags
