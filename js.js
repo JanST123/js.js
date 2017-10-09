@@ -411,15 +411,22 @@ js.updateLinkTag = function(rel, href) {
  * does animated vertical scroll to given offset.
  * @param number offset
  * @param number duration in ms
+ * @param Node target (target node if scroll should not affect document)
  * @return Void
  */
-js.animateScroll = function(offset, duration) {
+js.animateScroll = function(offset, duration, target) {
+  if (duration instanceof Node) {
+    target=duration;
+    duration=null;
+  }
   duration = duration || 400;
-  if (offset == window.scrollY) return; // nothing to do
+
+
+  if (offset == (target ? target.scrollTop : window.scrollY)) return; // nothing to do
 
   offset = Math.floor(offset);
   var currAnimationId = 0,
-      currentScrollpos = window.scrollY,
+      currentScrollpos = target ? target.scrollTop : window.scrollY,
       oldScrollpos = -1,
       lastFrameTime = +new Date() - 1;
   var direction = offset > currentScrollpos ? 1 : -1;
@@ -429,9 +436,9 @@ js.animateScroll = function(offset, duration) {
   var animation = function(){
     if(window.scrollY != oldScrollpos){
       // we still have to scroll
-      oldScrollpos = window.scrollY;
+      oldScrollpos = target ? target.scrollTop : window.scrollY;
 
-      var newScrollpos = +window.scrollY + (((new Date() - lastFrameTime) / duration * timeManipulation ) * direction);
+      var newScrollpos = +(target ? target.scrollTop : window.scrollY) + (((new Date() - lastFrameTime) / duration * timeManipulation ) * direction);
       newScrollpos = (direction == 1 ? Math.ceil(newScrollpos) : Math.floor(newScrollpos));
 
       if( (newScrollpos >= offset && direction == 1) || (newScrollpos <= offset && direction == -1) ) {
@@ -446,7 +453,11 @@ js.animateScroll = function(offset, duration) {
       }
 
       // do the scrolling
-      window.scrollTo(0, newScrollpos);
+      if (target) {
+        target.scrollTop = newScrollpos;
+      } else {
+        window.scrollTo(0, newScrollpos);
+      }
 
     } else {
       cancelAnimationFrame( currAnimationId );
@@ -861,31 +872,34 @@ js.pregQuote = function(text) {
 js.serializeFormValues=function(formEl, asObject) {
   asObject = asObject || false;
   var formData={};
-  var fields=formEl.querySelectorAll('input,select,textarea');
 
-  function setFieldValue(field, value) {
-    if (typeof(field.name)=='string' && field.name.match(/(.*)\[(.*)\]$/)) {
-      if (RegExp.$2==='') {
-        if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1]=[];
-        formData[RegExp.$1].push(value);
+  if (formEl && typeof(formEl.querySelectorAll) === 'function') {
+    var fields = formEl.querySelectorAll('input,select,textarea');
+
+    function setFieldValue(field, value) {
+      if (typeof(field.name) == 'string' && field.name.match(/(.*)\[(.*)\]$/)) {
+        if (RegExp.$2 === '') {
+          if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1] = [];
+          formData[RegExp.$1].push(value);
+        } else {
+          if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1] = {};
+          formData[RegExp.$1][RegExp.$2] = calue;
+        }
       } else {
-        if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1]={};
-        formData[RegExp.$1][RegExp.$2]=calue;
+        formData[field.name] = value;
       }
-    } else {
-      formData[field.name]=value;
     }
-  }
 
-  for (var x=0; x<fields.length; ++x) {
-    if (typeof(fields[x].type)!='undefined' && (fields[x].type=='checkbox' || fields[x].type=='radio')) {
-      if (fields[x].checked) {
+    for (var x = 0; x < fields.length; ++x) {
+      if (typeof(fields[x].type) != 'undefined' && (fields[x].type == 'checkbox' || fields[x].type == 'radio')) {
+        if (fields[x].checked) {
+          setFieldValue(fields[x], fields[x].value);
+        }
+      } else if (fields[x].tagName == 'SELECT') {
+        setFieldValue(fields[x], fields[x].options[fields[x].selectedIndex].value);
+      } else {
         setFieldValue(fields[x], fields[x].value);
       }
-    } else if(fields[x].tagName=='SELECT') {
-      setFieldValue(fields[x], fields[x].options[fields[x].selectedIndex].value);
-    } else {
-      setFieldValue(fields[x], fields[x].value);
     }
   }
   
@@ -990,6 +1004,7 @@ js.eventListener = function(el) {
 
   return {
     'add': function(eventName, type, callback, capture) {
+      if (!el || typeof(el.addEventListener) !== 'function') return;
       capture = capture || false;
 
       if (typeof(type) == 'string') type = [ type ];
@@ -1016,6 +1031,7 @@ js.eventListener = function(el) {
       }
     },
     'remove': function(eventName, type, callback, capture) {
+      if (!el || typeof(el.removeEventListener) !== 'function') return;
       capture = capture || false;
 
       if (typeof(type) == 'string') type = [ type ];
@@ -1033,7 +1049,7 @@ js.eventListener = function(el) {
       }
       js.boundEvents = tmp;
 
-      if (!found) {
+      if (!found && callback) {
         for (var i=0; i<type.length; ++i) {
           el.removeEventListener(type[i], callback, capture);
         }
