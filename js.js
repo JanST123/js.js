@@ -318,6 +318,11 @@ js.selectAllText = function(el) {
  */
 js.updateMetaTag = function(name, value) {
   name=name.replace(':', '\\:');
+  // strip tags
+  var tmp = document.createElement("DIV");
+  tmp.innerHTML = value;
+  value = tmp.textContent;
+
 
   if (typeof(document.head) != 'undefined' && typeof(document.head.querySelector) == 'function') {
     var el = document.head.querySelector('meta[name=' + name + '],meta[http-equiv=' + name + '],meta[property=' + name + ']');
