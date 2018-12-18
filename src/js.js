@@ -1,6 +1,6 @@
 /* start JS framework */
 
-window.js = window.js || {};
+var js={};
 
 /**
  * calls the callback on document ready (even usable when document load already finishd)
@@ -16,9 +16,8 @@ js.onReady = function (readyCB) {
 
 /**
  * returns if an element has a css class
- * @param HTMLNode el
- * @param String cls
- * @returns {boolean}
+ * @param {HTMLNode} el
+ * @param {String} cls
  */
 js.hasClass = function(el, cls) {
   var classes=[];
@@ -644,7 +643,7 @@ js.ajax = function(url, settings) {
     for (var x in settings.headers) {
       if (settings.headers.hasOwnProperty(x)) {
         if (x=='length') continue;
-  
+
         if (typeof(settings.headers[x])=='object' && typeof(settings.headers[x].length)!='undefined') {
           headers.push(settings.headers[x]);
         } else {
@@ -763,7 +762,7 @@ js.ajax = function(url, settings) {
       settings.error.call(settings.context, xhr, 'error');
     }
   });
-  
+
   // listen for progress change
   if (typeof(settings.progressCallback) == 'function') {
     xhr.addEventListener('progress', settings.progressCallback);
@@ -907,9 +906,9 @@ js.serializeFormValues=function(formEl, asObject) {
       }
     }
   }
-  
+
   if (asObject) return formData;
-  
+
   return js.ajaxParam(formData);
 };
 
@@ -928,7 +927,7 @@ js.triggerEvent = function(el, eventName, customData) {
   if (customData) {
     event = document.createEvent('CustomEvent');
     event.initCustomEvent(eventName, true, true, customData);
-    
+
   } else {
     event = document.createEvent('Event');
     event.initEvent(eventName, true, true);
@@ -1135,3 +1134,4 @@ js.eventListener = function(el) {
 js.boundEvents=[];
 js.pausedEvents=[];
 
+module.exports = js;

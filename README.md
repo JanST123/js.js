@@ -8,11 +8,20 @@ See it in action on
 * https://gebrauchtpreis.net
 
 
+## Usage
+Installation
+
+    npm install --save janst123_js.js
+
+Use
+
+    var js=require('js.js');
+
 
 ## Some of the Features
 * onReady Callback
   * Usable at every time in the application
-* Ajax 
+* Ajax
   * GET
   * POST
   * JSON
@@ -46,4 +55,3 @@ See it in action on
   * Update Link Tags
   * Select All Text in Input
   * Derefecence Object
-

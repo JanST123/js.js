@@ -1,0 +1,20 @@
+{
+  "name": "janst123_js.js",
+  "version": "0.8.8",
+  "description": "Lightweight JS library containing only what you need for common usage",
+  "author": "Jan Stuhlmann <info@jan-stuhlmann.de>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JanST123/js.js.git"
+  },
+  "homepage": "https://github.com/JanST123/js.js.git",
+  "main": "dist/js.min.js",
+  "scripts": {
+    "uglify": "uglifyjs --compress --mangle --output dist/js.min.js -- src/js.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "uglify-js": "^3.4.9"
+  }
+}
