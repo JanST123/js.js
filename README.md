@@ -1,3 +1,5 @@
+[![](https://img.shields.io/npm/v/npm.svg)](https://www.npmjs.com/package/janst123_js.js)
+
 # js.js
 This is a collection of often needed Pure-JS helper functions. No need to load a big framework like jQuery etc.
 Feel free to extract single functions or use the whole collection.
