@@ -1,4 +1,5 @@
-[![](https://img.shields.io/npm/v/npm.svg)](https://www.npmjs.com/package/janst123_js.js)
+[![npm version](https://badge.fury.io/js/janst123_js.js.svg)](https://badge.fury.io/js/janst123_js.js)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=plastic)](https://raw.githubusercontent.com/JanST123/js.js/master/LICENSE.md)
 
 # js.js
 This is a collection of often needed Pure-JS helper functions. No need to load a big framework like jQuery etc.
