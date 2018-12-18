@@ -12,13 +12,15 @@ See it in action on
 
 
 ## Usage
-Installation
+### with npm
 
     npm install --save janst123_js.js
 
-Use
-
     var js=require('js.js');
+    
+### without npm
+Embed the file dist/js.js.min and there is a global variable "js" set.
+    
 
 
 ## Some of the Features
