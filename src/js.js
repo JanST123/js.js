@@ -1,6 +1,6 @@
 /* start JS framework */
 
-var js={};
+window.js = window.js || {};
 
 /**
  * calls the callback on document ready (even usable when document load already finishd)
@@ -16,8 +16,9 @@ js.onReady = function (readyCB) {
 
 /**
  * returns if an element has a css class
- * @param {HTMLNode} el
- * @param {String} cls
+ * @param HTMLNode el
+ * @param String cls
+ * @returns {boolean}
  */
 js.hasClass = function(el, cls) {
   var classes=[];
@@ -317,11 +318,6 @@ js.selectAllText = function(el) {
  */
 js.updateMetaTag = function(name, value) {
   name=name.replace(':', '\\:');
-  // strip tags
-  var tmp = document.createElement("DIV");
-  tmp.innerHTML = value;
-  value = tmp.textContent;
-
 
   if (typeof(document.head) != 'undefined' && typeof(document.head.querySelector) == 'function') {
     var el = document.head.querySelector('meta[name=' + name + '],meta[http-equiv=' + name + '],meta[property=' + name + ']');
@@ -643,7 +639,7 @@ js.ajax = function(url, settings) {
     for (var x in settings.headers) {
       if (settings.headers.hasOwnProperty(x)) {
         if (x=='length') continue;
-
+  
         if (typeof(settings.headers[x])=='object' && typeof(settings.headers[x].length)!='undefined') {
           headers.push(settings.headers[x]);
         } else {
@@ -762,7 +758,7 @@ js.ajax = function(url, settings) {
       settings.error.call(settings.context, xhr, 'error');
     }
   });
-
+  
   // listen for progress change
   if (typeof(settings.progressCallback) == 'function') {
     xhr.addEventListener('progress', settings.progressCallback);
@@ -880,7 +876,7 @@ js.serializeFormValues=function(formEl, asObject) {
   if (formEl && typeof(formEl.querySelectorAll) === 'function') {
     var fields = formEl.querySelectorAll('input,select,textarea');
 
-    function setFieldValue(field, value) {
+    var setFieldValue = function(field, value) {
       if (typeof(field.name) == 'string' && field.name.match(/(.*)\[(.*)\]$/)) {
         if (RegExp.$2 === '') {
           if (typeof(formData[RegExp.$1]) != 'object') formData[RegExp.$1] = [];
@@ -906,9 +902,9 @@ js.serializeFormValues=function(formEl, asObject) {
       }
     }
   }
-
+  
   if (asObject) return formData;
-
+  
   return js.ajaxParam(formData);
 };
 
@@ -927,7 +923,7 @@ js.triggerEvent = function(el, eventName, customData) {
   if (customData) {
     event = document.createEvent('CustomEvent');
     event.initCustomEvent(eventName, true, true, customData);
-
+    
   } else {
     event = document.createEvent('Event');
     event.initEvent(eventName, true, true);
@@ -957,14 +953,7 @@ js.eventListener = function(el) {
         return false;
       };
 
-      // prevent text selecting on iOS devices.
-      // implement a css class for the body, containing this rules:
-      // -moz-user-select: none;
-      // -webkit-user-select: none;
-      // -ms-user-select: none;
-      // user-select: none;
-      // -o-user-select: none;
-      // -webkit-touch-callout: none;
+
       js.addClass(document.body, 'prevent-selection-for-longtouch');
 
 
@@ -1006,6 +995,55 @@ js.eventListener = function(el) {
     }
   }
 
+
+  var tapTimer=null,
+      tapX=null,
+      tapY=null,
+      tapTriggered=false;
+  function startTap(callback) {
+    return function(e) {
+      // prevent select on tap on android
+      this.onselectstart = function() {
+        return false;
+      };
+
+
+      js.addClass(document.body, 'prevent-selection-for-longtouch');
+
+
+      tapTriggered=false;
+      if (typeof(e.touches[0]) === 'object' && typeof(e.touches[0].clientX) === 'number') {
+        tapX = e.touches[0].clientX;
+        tapY = e.touches[0].clientY;
+      }
+
+
+      tapTriggered=true;
+
+    };
+  }
+  function endTap(callback) {
+    return function (e) {
+      js.removeClass(document.body, 'prevent-selection-for-longtouch');
+
+      if (tapTriggered) {
+        tapTriggered = false;
+        callback.call(el, e);
+      }
+
+    }
+  }
+  function endTapOnMove(e) {
+    if (typeof(e.touches[0]) === 'object' && typeof(e.touches[0].clientX) === 'number') {
+      if (tapX !== null && tapY !== null) {
+        if (Math.abs(tapX - e.touches[0].clientX) > 20 || Math.abs(tapY - e.touches[0].clientY)) {
+          tapTriggered=false;
+
+        }
+      }
+    }
+  }
+
   return {
     'add': function(eventName, type, callback, capture) {
       if (!el || typeof(el.addEventListener) !== 'function') return;
@@ -1027,6 +1065,19 @@ js.eventListener = function(el) {
             js.boundEvents.push([el, eventName + '-longtouchmove', 'touchmove', endLongTouchOnMove, capture]);
             break;
 
+          case 'tap':
+            var startCb=startTap(callback);
+            var endCb=endTap(callback);
+            el.addEventListener('touchstart', startCb, capture);
+            js.boundEvents.push([el, eventName + '-tapstart', 'touchstart', startCb, capture]);
+
+            el.addEventListener('touchend', endCb, capture);
+            js.boundEvents.push([el, eventName + '-tapend', 'touchend', endCb, capture]);
+
+            el.addEventListener('touchmove', endTapOnMove, capture);
+            js.boundEvents.push([el, eventName + '-tapmove', 'touchmove', endTapOnMove, capture]);
+            break;
+
           default:
             // normal js event
             el.addEventListener(type[i], callback, capture);
@@ -1043,9 +1094,17 @@ js.eventListener = function(el) {
       var found=false,
           tmp=[];
       for (var i=0; i<js.boundEvents.length; ++i) {
-        if (js.boundEvents[i][0] === el && js.boundEvents[i][1] == eventName) {
+        if (js.boundEvents[i][0] === el && (
+          js.boundEvents[i][1] == eventName ||
+          js.boundEvents[i][1] == eventName + '-longtouchstart' ||
+          js.boundEvents[i][1] == eventName + '-longtouchend' ||
+          js.boundEvents[i][1] == eventName + '-longtouchmove' ||
+          js.boundEvents[i][1] == eventName + '-tapstart' ||
+          js.boundEvents[i][1] == eventName + '-tapend' ||
+          js.boundEvents[i][1] == eventName + '-tapmove')) {
+
           el.removeEventListener(js.boundEvents[i][2], js.boundEvents[i][3], js.boundEvents[i][4]);
-          delete js.boundEvents[i];
+          //delete js.boundEvents[i];
           found=true;
         } else {
           tmp.push(js.boundEvents[i]);
@@ -1134,4 +1193,3 @@ js.eventListener = function(el) {
 js.boundEvents=[];
 js.pausedEvents=[];
 
-module.exports = js;
